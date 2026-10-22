@@ -1,0 +1,14 @@
+build
+mx.scratch
+!.settings
+
+# Local CubeMX/CubeIDE state
+mx.scratch/
+.settings/
+
+# CMake build output
+build/
+cmake-build-*/
+
+# Local VS Code IntelliSense file (not needed with stm32-cube-clangd)
+.vscode/c_cpp_properties.json
