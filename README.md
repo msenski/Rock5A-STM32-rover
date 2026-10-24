@@ -42,6 +42,25 @@ flowchart LR
 
 The goal is to gradually extend the system with sensors, feedback, and eventually higher-level autonomous behavior.
 
+## Folder structure
+
+```text
+.
+├── firmware/
+│   └── rover-controller/    # STM32 (Nucleo G431KB) firmware project
+│       ├── Core/            # Application source and header files
+│       ├── Drivers/         # STM32 HAL, CMSIS, and board-support libraries
+│       ├── cmake/           # ARM toolchain and STM32CubeMX CMake support
+│       └── rover-controller.ioc  # STM32CubeMX configuration
+├── software/
+│   └── rover-gateway/       # Rock 5A C++ gateway application
+│       ├── include/         # Public C++ headers
+│       └── src/             # Application and serial-port implementation
+└── .vscode/                 # Workspace editor settings
+```
+
+The `firmware` project controls the rover hardware and is generated/configured with STM32CubeMX. The `software` project runs on the Rock 5A and provides the high-level side of the UART connection to the STM32.
+
 ## Hardware
 
 - **Rock 5A (8 GB)**: Linux (Ubuntu) SBC for high-level control [link](https://docs.radxa.com/en/rock5/rock5a/getting-started/introduction)
