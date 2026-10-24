@@ -7,6 +7,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 add_executable(rover_gateway
     src/main.cpp
+    src/serial_port.cpp
 )
 
 target_compile_options(rover_gateway PRIVATE
@@ -14,3 +15,6 @@ target_compile_options(rover_gateway PRIVATE
     -Wextra
     -Wpedantic
 )
+
+# By PRIVATE we make it only visible for this target's linker
+target_include_directories(rover_gateway PRIVATE include)

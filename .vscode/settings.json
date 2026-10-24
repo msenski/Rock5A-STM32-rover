@@ -1,3 +1,4 @@
 {
-    "cmake.sourceDirectory": "/home/ubuntu/Rock5A-STM32-rover/software/rover_gateway"
+    "cmake.sourceDirectory": "/home/ubuntu/Rock5A-STM32-rover/software/rover_gateway",
+    "C_Cpp.default.compilerPath": "/usr/bin/aarch64-linux-gnu-g++"
 }
