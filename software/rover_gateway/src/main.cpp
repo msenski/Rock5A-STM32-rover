@@ -22,7 +22,6 @@ int main()
         return 1;
     }
 
-    // Fiiinaaaallyyyyy
     char buffer[100];
     while (1)
     {
