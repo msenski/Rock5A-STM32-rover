@@ -51,6 +51,7 @@ UART_HandleTypeDef huart2;
 
 /* USER CODE BEGIN PV */
 uint8_t rx_command;
+const uint32_t COMMAND_TIMEOUT_MS = 500;
 
 /* USER CODE END PV */
 
@@ -178,36 +179,51 @@ int main(void)
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
 
+  // We set a threshold so our motors don't spin forever if
+  // some time elapsed since the last command
+  uint32_t last_command_time = HAL_GetTick();
+
   while (1) {
+	// Check the timeout (Watchdog)
+	if ((HAL_GetTick() - last_command_time) >= COMMAND_TIMEOUT_MS){
+		// If there was no command in a while (maybe the Rock died), stop the wheels.
+		Motor_SetSpeed(MOTOR_RIGHT, 0);
+		Motor_SetSpeed(MOTOR_LEFT, 0);
+	}
     // Receive a command via UART
-    HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &rx_command, 1, HAL_MAX_DELAY);
+    HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &rx_command, 1, 50);
     if (status == HAL_OK){
     	switch (rx_command){
     	case 'w':
     		// Drive forward
     		Motor_SetSpeed(MOTOR_RIGHT, 500);
     		Motor_SetSpeed(MOTOR_LEFT, 500);
+    		last_command_time = HAL_GetTick();
     		break;
     	case 's':
     		// Drive forward
     		Motor_SetSpeed(MOTOR_RIGHT, -500);
     		Motor_SetSpeed(MOTOR_LEFT, -500);
+    		last_command_time = HAL_GetTick();
     		break;
     	case 'd':
     		// Turn Right
     		Motor_SetSpeed(MOTOR_RIGHT, 500);
     		Motor_SetSpeed(MOTOR_LEFT, -500);
+    		last_command_time = HAL_GetTick();
     		break;
     	case 'a':
     		// Turn Left
     		Motor_SetSpeed(MOTOR_RIGHT, -500);
     		Motor_SetSpeed(MOTOR_LEFT, 500);
+    		last_command_time = HAL_GetTick();
     		break;
 
     	case ' ': // Space
     		// Stop
     		Motor_SetSpeed(MOTOR_RIGHT, 0);
     		Motor_SetSpeed(MOTOR_LEFT, 0);
+    		last_command_time = HAL_GetTick();
     		break;
     	default:
     		break;

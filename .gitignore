@@ -26,10 +26,6 @@
 *.dll
 *.so.*
 
-# Fortran module files
-*.mod
-*.smod
-
 # Compiled Static libraries
 *.lai
 *.la
@@ -42,12 +38,10 @@
 *.app
 
 # Build directories
-build/
-Build/
-build-*/
+*/build/
+*/Build/
+*/build-*/
 
-# CMake generated files
-*/build/*
 
 # Temporary files
 *.tmp
@@ -64,3 +58,14 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# STM32CubeIDE build output
+**/Debug/
+**/Release/
+
+# Common generated build files
+*.o
+*.elf
+*.bin
+*.hex
+*.map
