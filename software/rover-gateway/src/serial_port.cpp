@@ -132,3 +132,8 @@ ssize_t SerialPort::readBytes(char *buffer, size_t length)
 {
     return read(fd_, buffer, length);
 }
+
+ssize_t SerialPort::writeBytes(const char *buffer, size_t length)
+{
+    return write(fd_, buffer, length);
+}

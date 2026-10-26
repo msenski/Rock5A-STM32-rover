@@ -21,7 +21,22 @@ public:
      * @return false An error occured while opening the port.
      */
     bool openPort();
+    /**
+     * @brief Reads bytes from the serial port.
+     *
+     * @param buffer Pointer to the buffer the bytes should be written to.
+     * @param length Number of to receive.
+     * @return Number of bytes written, or -1 on error.
+     */
     ssize_t readBytes(char *buffer, size_t length);
+    /**
+     * @brief Writes bytes to the serial port.
+     *
+     * @param buffer Pointer to the data to transmit.
+     * @param length Number of bytes to transmit.
+     * @return Number of bytes written, or -1 on error.
+     */
+    ssize_t writeBytes(const char *buffer, size_t length);
 
 private:
     const char *device_;
