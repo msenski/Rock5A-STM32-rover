@@ -10,7 +10,7 @@
 #include "serial_port.hpp"
 #include <unistd.h>
 
-const auto serial_port = "/dev/ttyACM0";
+const auto serial_port = "/dev/serial/by-id/usb-STMicroelectronics_STLINK-V3_0049001C3335510333383531-if02";
 
 int main()
 {
