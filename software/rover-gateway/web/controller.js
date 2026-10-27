@@ -39,8 +39,14 @@ socket.addEventListener("error", () => {
     setCommand("STOP");
 });
 
+// Keep sending the current Command every 100 millisecons
+const HEARTBEAT_INTERVAL_MS = 100;
 
-
+setInterval(() => {
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(activeCommand);
+    }
+}, HEARTBEAT_INTERVAL_MS);
 
 const movementDisplay = document.getElementById("movement");
 const buttons = document.querySelectorAll("[data-command]");

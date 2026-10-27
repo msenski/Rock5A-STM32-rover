@@ -3,15 +3,14 @@
 #include <cstddef>
 #include <sys/types.h>
 
-class SerialPort
-{
-public:
-    explicit SerialPort(const char *device);
+class SerialPort {
+  public:
+    explicit SerialPort(const char* device);
     ~SerialPort();
 
     // Disable copying so we don't have two objects competing for the same device accidentally
-    SerialPort(const SerialPort &rhs) = delete;
-    SerialPort &operator=(const SerialPort &rhs) = delete;
+    SerialPort(const SerialPort& rhs) = delete;
+    SerialPort& operator=(const SerialPort& rhs) = delete;
 
     /**
      * @brief Opens a serial port and configures defaults for UART communication.
@@ -28,7 +27,7 @@ public:
      * @param length Number of to receive.
      * @return Number of bytes written, or -1 on error.
      */
-    ssize_t readBytes(char *buffer, size_t length);
+    ssize_t readBytes(char* buffer, size_t length);
     /**
      * @brief Writes bytes to the serial port.
      *
@@ -36,9 +35,9 @@ public:
      * @param length Number of bytes to transmit.
      * @return Number of bytes written, or -1 on error.
      */
-    ssize_t writeBytes(const char *buffer, size_t length);
+    ssize_t writeBytes(const char* buffer, size_t length);
 
-private:
-    const char *device_;
+  private:
+    const char* device_;
     int fd_ = -1; // No file descriptior by default
 };

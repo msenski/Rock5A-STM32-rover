@@ -9,6 +9,8 @@ add_executable(rover-gateway
     src/main.cpp
     src/serial_port.cpp
     src/crow_server.cpp
+    src/rover_state.cpp
+    src/command.cpp
 )
 
 target_compile_options(rover-gateway PRIVATE
