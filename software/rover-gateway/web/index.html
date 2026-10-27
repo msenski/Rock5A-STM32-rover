@@ -1,0 +1,48 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Rover Control</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/controller.js" defer></script>
+</head>
+<body>
+    <main class="dashboard">
+        <header>
+            <h1>ROVER / CONTROL</h1>
+            <p>Rock 5A + STM32 G431KB</p>
+        </header>
+
+        <section class="status">
+            <span class="label">MOVEMENT</span>
+            <h2 id="movement">STOPPED</h2>
+            <p>Local UI demo</p>
+        </section>
+
+        <section class="controls">
+            <button class="forward"
+                    data-command="FORWARD">▲</button>
+
+            <button class="left"
+                    data-command="LEFT">◀</button>
+
+            <button class="stop"
+                    data-command="STOP">■</button>
+
+            <button class="right"
+                    data-command="RIGHT">▶</button>
+
+            <button class="backward"
+                    data-command="BACKWARD">▼</button>
+        </section>
+
+        <footer>
+            Hold W / A / S / D or a directional button
+        </footer>
+    </main>
+</body>
+</html>

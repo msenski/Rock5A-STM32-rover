@@ -18,3 +18,7 @@ target_compile_options(rover-gateway PRIVATE
 
 # By PRIVATE we make it only visible for this target's linker
 target_include_directories(rover-gateway PRIVATE include)
+
+find_package(Crow CONFIG REQUIRED)
+
+target_link_libraries(rover-gateway PRIVATE Crow::Crow)
