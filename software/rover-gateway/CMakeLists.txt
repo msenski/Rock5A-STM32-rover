@@ -8,6 +8,7 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(rover-gateway
     src/main.cpp
     src/serial_port.cpp
+    src/crow_server.cpp
 )
 
 target_compile_options(rover-gateway PRIVATE

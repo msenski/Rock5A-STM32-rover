@@ -1,68 +1,57 @@
-#include <cerrno>
-#include <cstring>
-#include <string>
+#include <atomic>
+#include <chrono>
+#include <thread>
 #include <iostream>
 
 #include <cstddef>
 #include <sys/types.h>
-
-#include "serial_port.hpp"
 #include <unistd.h>
 
 #include <crow.h>
 
+#include "serial_port.hpp"
+#include "crow_server.hpp"
+
 const auto serial_port = "/dev/serial/by-id/usb-STMicroelectronics_STLINK-V3_0049001C3335510333383531-if02";
+
+enum class Command
+{
+    Stop,
+    Forward,
+    Backward,
+    Left,
+    Right
+};
 
 int main()
 {
+    // Start with a Stop command
+    std::atomic<Command> currentCommand{Command::Stop};
+
+    // A flag to indicate whether or not we should be running the UART-worker.
+    // It should run by default, until the crow server shuts down.
+    std::atomic<bool> uartWorkerRunning{true};
+
+    std::thread uartThread([&]() { // with & we can reference the outer scope
+        while (uartWorkerRunning.load() == true)
+        {
+            Command command = currentCommand.load();
+
+            // TODO send stuff over UART to STM32
+
+            std::this_thread::sleep_for(std::chrono::milliseconds(100));
+        }
+    });
+
     crow::SimpleApp app;
 
-    app.static_file("/", "web/index.html");
-    app.static_file("/style.css", "web/style.css");
-    app.static_file("/controller.js", "web/controller.js");
+    configureServer(app);
 
-    std::cout << "Starting Rock5A rover server..." << std::endl;
+    app.run();
 
-    app.bindaddr("0.0.0.0").port(8080).run();
-
-    // // Open our serial port to the STM
-    // SerialPort serial = SerialPort(serial_port);
-
-    // if (!serial.openPort())
-    // {
-    //     return 1;
-    // }
-
-    // while (1)
-    // {
-    //     std::string input;
-    //     if (!std::getline(std::cin, input))
-    //     {
-    //         break;
-    //     }
-
-    //     if (input.empty())
-    //     {
-    //         continue;
-    //     }
-
-    //     char command = input[0];
-
-    //     if (command == 'w' || command == 'a' || command == 's' || command == 'd' || command == ' ')
-    //     {
-    //         serial.writeBytes(&command, 1);
-    //     }
-    //     else if (command == 'q')
-    //     {
-    //         char stop = ' ';
-    //         serial.writeBytes(&stop, 1);
-    //         return 0;
-    //     }
-    //     else
-    //     {
-    //         std::cout << "Unknown command. Can be one of 'w', 'a','s','d', ' ' or 'q'" << std::endl;
-    //     }
-    // }
+    // When app shuts down, signal to the UART worker to stop running
+    uartWorkerRunning.store(false);
+    uartThread.join();
 
     return 0;
 }

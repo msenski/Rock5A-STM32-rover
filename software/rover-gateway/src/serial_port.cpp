@@ -2,14 +2,11 @@
 #include <sys/types.h>
 
 #include <cerrno>
-// strerror() to print errors nicely
-#include <cstring>
+#include <cstring> // strerror() to print errors nicely
 #include <iostream>
-// File control: How files are opened and configured.
-#include <fcntl.h>
+#include <fcntl.h> // File control: How files are opened and configured.
 
-// General POSIX os-interface (read(), write(), close(), getpid(), etc.)
-#include <unistd.h>
+#include <unistd.h> // General POSIX os-interface (read(), close(), getpid(), etc.)
 
 // POSIX terminal control definitions to control asynchronous communications ports.
 // We will use it to set the baudrate etc.
