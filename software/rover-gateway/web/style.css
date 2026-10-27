@@ -41,6 +41,31 @@ header p, footer, .status p {
     border-radius: 12px;
 }
 
+.connection-status {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 16px;
+    font-size: 13px;
+    color: #94a3b8;
+}
+
+#connection-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: #f59e0b; /* Yellow: connecting */
+}
+
+.connection-status.connected #connection-dot {
+    background: #22c55e; /* Green */
+}
+
+.connection-status.disconnected #connection-dot {
+    background: #ef4444; /* Red */
+}
+
 .label {
     color: #94a3b8;
     font-size: 12px;
@@ -67,6 +92,8 @@ button {
     font-size: 24px;
     cursor: pointer;
     user-select: none;
+    -webkit-user-select: none;
+    -webkit-touch-callout: none;
     touch-action: none;
 }
 

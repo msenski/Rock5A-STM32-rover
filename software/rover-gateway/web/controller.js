@@ -1,6 +1,23 @@
 
 // This file's code is LLM generated - I suck at frontend :(
 
+// The phone sometimes disconnects the Websocket, add a connection status indicator
+const connectionStatus = document.querySelector(".connection-status");
+const connectionText = document.getElementById("connection-text");
+
+function updateConnectionStatus(status) {
+    connectionStatus.classList.remove("connected", "disconnected");
+
+    if (status === "connected") {
+        connectionStatus.classList.add("connected");
+        connectionText.textContent = "Connected";
+    } else if (status === "disconnected") {
+        connectionStatus.classList.add("disconnected");
+        connectionText.textContent = "Disconnected";
+    } else {
+        connectionText.textContent = "Connecting...";
+    }
+}
 
 // The WebSocket to send commands to the server
 const socket = new WebSocket(
@@ -8,17 +25,21 @@ const socket = new WebSocket(
 );
 
 socket.addEventListener("open", () => {
-    console.log("Connected to rover server");
+    updateConnectionStatus("connected");
     socket.send("STOP");
 });
 
 socket.addEventListener("close", () => {
-    console.log("Disconnected from rover server");
+    updateConnectionStatus("disconnected");
+    setCommand("STOP");
 });
 
 socket.addEventListener("error", () => {
-    console.error("WebSocket connection error");
+    updateConnectionStatus("disconnected");
+    setCommand("STOP");
 });
+
+
 
 
 const movementDisplay = document.getElementById("movement");
