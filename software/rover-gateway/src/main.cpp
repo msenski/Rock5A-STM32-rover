@@ -1,16 +1,15 @@
+#include "serial_port.hpp"
+#include "crow_server.hpp"
+
+#include <iostream>
 #include <atomic>
 #include <chrono>
 #include <thread>
-#include <iostream>
-
 #include <cstddef>
 #include <sys/types.h>
 #include <unistd.h>
 
 #include <crow.h>
-
-#include "serial_port.hpp"
-#include "crow_server.hpp"
 
 const auto serial_port = "/dev/serial/by-id/usb-STMicroelectronics_STLINK-V3_0049001C3335510333383531-if02";
 

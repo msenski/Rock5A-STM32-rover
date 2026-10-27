@@ -1,5 +1,26 @@
 
 // This file's code is LLM generated - I suck at frontend :(
+
+
+// The WebSocket to send commands to the server
+const socket = new WebSocket(
+    `ws://${window.location.host}/ws`
+);
+
+socket.addEventListener("open", () => {
+    console.log("Connected to rover server");
+    socket.send("STOP");
+});
+
+socket.addEventListener("close", () => {
+    console.log("Disconnected from rover server");
+});
+
+socket.addEventListener("error", () => {
+    console.error("WebSocket connection error");
+});
+
+
 const movementDisplay = document.getElementById("movement");
 const buttons = document.querySelectorAll("[data-command]");
 
@@ -34,6 +55,10 @@ function setCommand(command) {
             button.dataset.command === command
         );
     });
+
+    if (socket.readyState === WebSocket.OPEN) {
+        socket.send(command);
+    }
 
     console.log("Command:", command);
 }
