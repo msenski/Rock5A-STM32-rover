@@ -28,8 +28,10 @@
 /* USER CODE BEGIN PTD */
 
 typedef enum {
-	MOTOR_RIGHT,
-	MOTOR_LEFT
+	MOTOR_RIGHT_FRONT,
+	MOTOR_LEFT_FRONT,
+	MOTOR_RIGHT_BACK,
+	MOTOR_LEFT_BACK
 } Motor;
 /* USER CODE END PTD */
 
@@ -46,6 +48,7 @@ typedef enum {
 /* Private variables ---------------------------------------------------------*/
 
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
 
@@ -60,6 +63,7 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
+static void MX_TIM3_Init(void);
 /* USER CODE BEGIN PFP */
 
 /**
@@ -89,14 +93,23 @@ void Motor_SetSpeed(Motor motor, int32_t speed);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 void EnableMotorPWM(void){
-	  // Enable EEP
-	  HAL_GPIO_WritePin(EEP_GPIO_Port, EEP_Pin, GPIO_PIN_SET);
+	  // Enable EEP Front
+	  HAL_GPIO_WritePin(EEP_Front_GPIO_Port, EEP_Front_Pin, GPIO_PIN_SET);
 	// Right - Front Wheel
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_1);
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_2);
 	  // Left - Front Wheel
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_3);
 	  HAL_TIM_PWM_Start(&htim1, TIM_CHANNEL_4);
+
+	  // Enable EEP Back
+	  HAL_GPIO_WritePin(EEP_Back_GPIO_Port, EEP_Back_Pin, GPIO_PIN_SET);
+	// Right - Back Wheel
+	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_1);
+	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
+	  // Left - Back Wheel
+	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
+	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
 }
 
 void Motor_SetSpeed(Motor motor, int32_t speed){
@@ -110,13 +123,21 @@ void Motor_SetSpeed(Motor motor, int32_t speed){
 
 	// Init the placeholders with the correct CCR pointers
 	switch (motor) {
-		case MOTOR_RIGHT:
+		case MOTOR_RIGHT_FRONT:
 			in1 = &TIM1->CCR1;
 			in2 = &TIM1->CCR2;
 			break;
-		case MOTOR_LEFT:
+		case MOTOR_LEFT_FRONT:
 			in1 = &TIM1->CCR3;
 			in2 = &TIM1->CCR4;
+			break;
+		case MOTOR_RIGHT_BACK:
+			in1 = &TIM3->CCR1;
+			in2 = &TIM3->CCR2;
+			break;
+		case MOTOR_LEFT_BACK:
+			in1 = &TIM3->CCR3;
+			in2 = &TIM3->CCR4;
 			break;
 		default:
 			return;
@@ -170,11 +191,15 @@ int main(void)
   MX_GPIO_Init();
   MX_USART2_UART_Init();
   MX_TIM1_Init();
+  MX_TIM3_Init();
   /* USER CODE BEGIN 2 */
 
   EnableMotorPWM();
 
   /* USER CODE END 2 */
+
+  /* Initialize leds */
+  BSP_LED_Init(LED_GREEN);
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
@@ -187,8 +212,10 @@ int main(void)
 	// Check the timeout (Watchdog)
 	if ((HAL_GetTick() - last_command_time) >= COMMAND_TIMEOUT_MS){
 		// If there was no command in a while (maybe the Rock died), stop the wheels.
-		Motor_SetSpeed(MOTOR_RIGHT, 0);
-		Motor_SetSpeed(MOTOR_LEFT, 0);
+		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 0);
+		Motor_SetSpeed(MOTOR_LEFT_FRONT, 0);
+		Motor_SetSpeed(MOTOR_RIGHT_BACK, 0);
+		Motor_SetSpeed(MOTOR_LEFT_BACK, 0);
 	}
     // Receive a command via UART
     HAL_StatusTypeDef status = HAL_UART_Receive(&huart2, &rx_command, 1, 50);
@@ -196,33 +223,43 @@ int main(void)
     	switch (rx_command){
     	case 'w':
     		// Drive forward
-    		Motor_SetSpeed(MOTOR_RIGHT, 500);
-    		Motor_SetSpeed(MOTOR_LEFT, 500);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 800);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 800);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 800);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, 800);
     		last_command_time = HAL_GetTick();
     		break;
     	case 's':
     		// Drive forward
-    		Motor_SetSpeed(MOTOR_RIGHT, -500);
-    		Motor_SetSpeed(MOTOR_LEFT, -500);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -800);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -800);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -800);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, -800);
     		last_command_time = HAL_GetTick();
     		break;
     	case 'd':
     		// Turn Right
-    		Motor_SetSpeed(MOTOR_RIGHT, 500);
-    		Motor_SetSpeed(MOTOR_LEFT, -500);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -800);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 800);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -800);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, 800);
     		last_command_time = HAL_GetTick();
     		break;
     	case 'a':
     		// Turn Left
-    		Motor_SetSpeed(MOTOR_RIGHT, -500);
-    		Motor_SetSpeed(MOTOR_LEFT, 500);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 800);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -800);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 800);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, -800);
     		last_command_time = HAL_GetTick();
     		break;
 
     	case ' ': // Space
     		// Stop
-    		Motor_SetSpeed(MOTOR_RIGHT, 0);
-    		Motor_SetSpeed(MOTOR_LEFT, 0);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 0);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 0);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 0);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, 0);
     		last_command_time = HAL_GetTick();
     		break;
     	default:
@@ -379,6 +416,77 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM3 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM3_Init(void)
+{
+
+  /* USER CODE BEGIN TIM3_Init 0 */
+
+  /* USER CODE END TIM3_Init 0 */
+
+  TIM_ClockConfigTypeDef sClockSourceConfig = {0};
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM3_Init 1 */
+
+  /* USER CODE END TIM3_Init 1 */
+  htim3.Instance = TIM3;
+  htim3.Init.Prescaler = 170-1;
+  htim3.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim3.Init.Period = 999;
+  htim3.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim3.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_Base_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sClockSourceConfig.ClockSource = TIM_CLOCKSOURCE_INTERNAL;
+  if (HAL_TIM_ConfigClockSource(&htim3, &sClockSourceConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_Init(&htim3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim3, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM3_Init 2 */
+
+  /* USER CODE END TIM3_Init 2 */
+  HAL_TIM_MspPostInit(&htim3);
+
+}
+
+/**
   * @brief USART2 Initialization Function
   * @param None
   * @retval None
@@ -443,14 +551,24 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(EEP_GPIO_Port, EEP_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(EEP_Front_GPIO_Port, EEP_Front_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin : EEP_Pin */
-  GPIO_InitStruct.Pin = EEP_Pin;
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(EEP_Back_GPIO_Port, EEP_Back_Pin, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin : EEP_Front_Pin */
+  GPIO_InitStruct.Pin = EEP_Front_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(EEP_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(EEP_Front_GPIO_Port, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : EEP_Back_Pin */
+  GPIO_InitStruct.Pin = EEP_Back_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(EEP_Back_GPIO_Port, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
