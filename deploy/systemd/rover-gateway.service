@@ -1,0 +1,13 @@
+[Unit]
+Description=Rock5A Rover Gateway
+
+[Service]
+Type=simple
+User=ubuntu
+WorkingDirectory=/home/ubuntu/Rock5A-STM32-rover/software/rover-gateway
+ExecStart=/home/ubuntu/Rock5A-STM32-rover/build/rover-gateway/rover-gateway
+Restart=on-failure
+RestartSec=2
+
+[Install]
+WantedBy=multi-user.target
