@@ -47,7 +47,10 @@ typedef enum {
 
 /* Private variables ---------------------------------------------------------*/
 
+I2C_HandleTypeDef hi2c1;
+
 TIM_HandleTypeDef htim1;
+TIM_HandleTypeDef htim2;
 TIM_HandleTypeDef htim3;
 
 UART_HandleTypeDef huart2;
@@ -64,6 +67,8 @@ static void MX_GPIO_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM1_Init(void);
 static void MX_TIM3_Init(void);
+static void MX_I2C1_Init(void);
+static void MX_TIM2_Init(void);
 /* USER CODE BEGIN PFP */
 
 /**
@@ -109,7 +114,7 @@ void EnableMotorPWM(void){
 	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_2);
 	  // Left - Back Wheel
 	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_3);
-	  HAL_TIM_PWM_Start(&htim3, TIM_CHANNEL_4);
+	  HAL_TIM_PWM_Start(&htim2, TIM_CHANNEL_1);
 }
 
 void Motor_SetSpeed(Motor motor, int32_t speed){
@@ -137,7 +142,7 @@ void Motor_SetSpeed(Motor motor, int32_t speed){
 			break;
 		case MOTOR_LEFT_BACK:
 			in1 = &TIM3->CCR3;
-			in2 = &TIM3->CCR4;
+			in2 = &TIM2->CCR1;
 			break;
 		default:
 			return;
@@ -192,6 +197,8 @@ int main(void)
   MX_USART2_UART_Init();
   MX_TIM1_Init();
   MX_TIM3_Init();
+  MX_I2C1_Init();
+  MX_TIM2_Init();
   /* USER CODE BEGIN 2 */
 
   EnableMotorPWM();
@@ -322,6 +329,54 @@ void SystemClock_Config(void)
 }
 
 /**
+  * @brief I2C1 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_I2C1_Init(void)
+{
+
+  /* USER CODE BEGIN I2C1_Init 0 */
+
+  /* USER CODE END I2C1_Init 0 */
+
+  /* USER CODE BEGIN I2C1_Init 1 */
+
+  /* USER CODE END I2C1_Init 1 */
+  hi2c1.Instance = I2C1;
+  hi2c1.Init.Timing = 0x40B285C2;
+  hi2c1.Init.OwnAddress1 = 0;
+  hi2c1.Init.AddressingMode = I2C_ADDRESSINGMODE_7BIT;
+  hi2c1.Init.DualAddressMode = I2C_DUALADDRESS_DISABLE;
+  hi2c1.Init.OwnAddress2 = 0;
+  hi2c1.Init.OwnAddress2Masks = I2C_OA2_NOMASK;
+  hi2c1.Init.GeneralCallMode = I2C_GENERALCALL_DISABLE;
+  hi2c1.Init.NoStretchMode = I2C_NOSTRETCH_DISABLE;
+  if (HAL_I2C_Init(&hi2c1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Analogue filter
+  */
+  if (HAL_I2CEx_ConfigAnalogFilter(&hi2c1, I2C_ANALOGFILTER_ENABLE) != HAL_OK)
+  {
+    Error_Handler();
+  }
+
+  /** Configure Digital filter
+  */
+  if (HAL_I2CEx_ConfigDigitalFilter(&hi2c1, 0) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN I2C1_Init 2 */
+
+  /* USER CODE END I2C1_Init 2 */
+
+}
+
+/**
   * @brief TIM1 Initialization Function
   * @param None
   * @retval None
@@ -416,6 +471,55 @@ static void MX_TIM1_Init(void)
 }
 
 /**
+  * @brief TIM2 Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_TIM2_Init(void)
+{
+
+  /* USER CODE BEGIN TIM2_Init 0 */
+
+  /* USER CODE END TIM2_Init 0 */
+
+  TIM_MasterConfigTypeDef sMasterConfig = {0};
+  TIM_OC_InitTypeDef sConfigOC = {0};
+
+  /* USER CODE BEGIN TIM2_Init 1 */
+
+  /* USER CODE END TIM2_Init 1 */
+  htim2.Instance = TIM2;
+  htim2.Init.Prescaler = 170-1;
+  htim2.Init.CounterMode = TIM_COUNTERMODE_UP;
+  htim2.Init.Period = 999;
+  htim2.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
+  htim2.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  if (HAL_TIM_PWM_Init(&htim2) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sMasterConfig.MasterOutputTrigger = TIM_TRGO_RESET;
+  sMasterConfig.MasterSlaveMode = TIM_MASTERSLAVEMODE_DISABLE;
+  if (HAL_TIMEx_MasterConfigSynchronization(&htim2, &sMasterConfig) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  sConfigOC.OCMode = TIM_OCMODE_PWM1;
+  sConfigOC.Pulse = 0;
+  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
+  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
+  if (HAL_TIM_PWM_ConfigChannel(&htim2, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN TIM2_Init 2 */
+
+  /* USER CODE END TIM2_Init 2 */
+  HAL_TIM_MspPostInit(&htim2);
+
+}
+
+/**
   * @brief TIM3 Initialization Function
   * @param None
   * @retval None
@@ -472,10 +576,6 @@ static void MX_TIM3_Init(void)
     Error_Handler();
   }
   if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_3) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_PWM_ConfigChannel(&htim3, &sConfigOC, TIM_CHANNEL_4) != HAL_OK)
   {
     Error_Handler();
   }
@@ -551,24 +651,14 @@ static void MX_GPIO_Init(void)
   __HAL_RCC_GPIOB_CLK_ENABLE();
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(EEP_Front_GPIO_Port, EEP_Front_Pin, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, EEP_Front_Pin|EEP_Back_Pin, GPIO_PIN_RESET);
 
-  /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(EEP_Back_GPIO_Port, EEP_Back_Pin, GPIO_PIN_RESET);
-
-  /*Configure GPIO pin : EEP_Front_Pin */
-  GPIO_InitStruct.Pin = EEP_Front_Pin;
+  /*Configure GPIO pins : EEP_Front_Pin EEP_Back_Pin */
+  GPIO_InitStruct.Pin = EEP_Front_Pin|EEP_Back_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(EEP_Front_GPIO_Port, &GPIO_InitStruct);
-
-  /*Configure GPIO pin : EEP_Back_Pin */
-  GPIO_InitStruct.Pin = EEP_Back_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
-  GPIO_InitStruct.Pull = GPIO_NOPULL;
-  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
-  HAL_GPIO_Init(EEP_Back_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

@@ -63,12 +63,10 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 #define EEP_Front_Pin GPIO_PIN_1
 #define EEP_Front_GPIO_Port GPIOA
-#define T_SWDIO_Pin GPIO_PIN_13
-#define T_SWDIO_GPIO_Port GPIOA
+#define EEP_Back_Pin GPIO_PIN_7
+#define EEP_Back_GPIO_Port GPIOA
 #define T_SWCLK_Pin GPIO_PIN_14
 #define T_SWCLK_GPIO_Port GPIOA
-#define EEP_Back_Pin GPIO_PIN_4
-#define EEP_Back_GPIO_Port GPIOB
 
 /* USER CODE BEGIN Private defines */
 
