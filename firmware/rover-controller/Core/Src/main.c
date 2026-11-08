@@ -221,26 +221,36 @@ void EnableMPU6050(void){
 
 void readMPU6050(MPU6050_Data *pData){
 	// 0x3B (H), 0x3C (L)
-	int8_t buffer[14];
+	uint8_t buffer[14];
 
-	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_DATA_ADDR, I2C_MEMADD_SIZE_8BIT, buffer, 14, 1000);
+	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_DATA_ADDR, I2C_MEMADD_SIZE_8BIT, (uint8_t *) buffer, 14, 1000);
 
-	pData->acc_x = buffer[0] << 8 | buffer[1]; // 0x3B (H), 0x3C (L), bitwise-OR
-	pData->acc_y = buffer[3] << 8 | buffer[4];
-	pData->acc_z = buffer[5] << 8 | buffer[6];
-	pData->temp = buffer[7] << 8 | buffer[8];
-	pData->gyro_x = buffer[9] << 8 | buffer[10];
-	pData->gyro_y = buffer[11] << 8 | buffer[12];
-	pData->gyro_z = buffer[13] << 8 | buffer[14];
+	pData->acc_x = (uint16_t) (buffer[0] << 8 | buffer[1]); // 0x3B (H), 0x3C (L), bitwise-OR
+	pData->acc_y = (uint16_t) (buffer[2] << 8 | buffer[3]);
+	pData->acc_z = (uint16_t) (buffer[4] << 8 | buffer[5]);
+	pData->temp = (uint16_t) (buffer[6] << 8 | buffer[7]);
+	pData->gyro_x = (uint16_t) (buffer[8] << 8 | buffer[9]);
+	pData->gyro_y = (uint16_t) (buffer[10] << 8 | buffer[11]);
+	pData->gyro_z = (uint16_t) (buffer[12] << 8 | buffer[13]);
 }
 
 void printMPU6050(MPU6050_Data *pData){
 	char tx_buffer[128];
 
-	int len = sprintf(tx_buffer, "AX:%d, AY:%d, AZ:%d, T:%d, GX:%d, GY:%d, GZ:%d\r\n",
-			pData->acc_x, pData->acc_y, pData->acc_z,
-			pData->temp,
-			pData->gyro_x,  pData->gyro_y,  pData->gyro_z);
+	float acc_x_f = pData->acc_x / 16384.0f;
+	float acc_y_f = pData->acc_y / 16384.0f;
+	float acc_z_f = pData->acc_z / 16384.0f;
+
+	float temp_f = pData->temp / 340.0f + 36.53f;
+
+	float gyro_x_f = pData->gyro_x / 131.068f;
+	float gyro_y_f = pData->gyro_y / 131.068f;
+	float gyro_z_f = pData->gyro_z / 131.068f;
+
+	int len = sprintf(tx_buffer, "AX:%f, AY:%f, AZ:%f, T:%f, GX:%f, GY:%f, GZ:%f\r\n",
+			acc_x_f, acc_y_f, acc_z_f,
+			temp_f,
+			gyro_x_f,  gyro_y_f,  gyro_z_f);
 
 	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buffer, len, HAL_MAX_DELAY);
 }
