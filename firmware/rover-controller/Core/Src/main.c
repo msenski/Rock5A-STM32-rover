@@ -18,6 +18,7 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
+#include "stdio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -33,11 +34,31 @@ typedef enum {
 	MOTOR_RIGHT_BACK,
 	MOTOR_LEFT_BACK
 } Motor;
+
+typedef struct {
+	int16_t acc_x;
+	int16_t acc_y;
+	int16_t acc_z;
+	int16_t temp;
+	int16_t gyro_x;
+	int16_t gyro_y;
+	int16_t gyro_z;
+} MPU6050_Data;
+
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define MPU6050_ADDR ((uint16_t) 0x68 << 1)
+#define MPU6050_WHO_AM_I_ADDR ((uint16_t) 0x75)
+#define MPU6050_PWR_MGMT_1 ((uint16_t) 0x6B)
+#define MPU6050_GYRO_CONFIG ((uint16_t) 0x1B)
+#define MPU6050_ACCEL_CONFIG ((uint16_t) 0x1C)
+
+// This point to ACC_X_H but we use burst reading to read
+// all sensor data at once
+#define MPU6050_DATA_ADDR ((uint16_t) 0x3B)
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -93,6 +114,16 @@ void EnableMotorPWM(void);
   *              zero = stop.
   */
 void Motor_SetSpeed(Motor motor, int32_t speed);
+
+/**
+  * @brief  Check connection and initialize the MPU6050 sensor.
+  *
+  */
+void EnableMPU6050(void);
+
+void readMPU6050(MPU6050_Data *pData);
+
+void printMPU6050(MPU6050_Data *pData);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -163,6 +194,57 @@ void Motor_SetSpeed(Motor motor, int32_t speed){
 
 
 }
+
+
+void EnableMPU6050(void){
+	const uint8_t expected = 0x68; // We expect the upper 6bits of the slave address
+	uint8_t pRead;
+	uint8_t pWrite;
+
+	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_WHO_AM_I_ADDR, I2C_MEMADD_SIZE_8BIT, &pRead, 1, 1000);
+	if (pRead == expected){
+		// Connection established, we can proceed with initialization
+		// Wake up by setting all PWR_MGMT_1 bits to 0, including the SLEEP bit (6)
+		pWrite = 0;
+		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_PWR_MGMT_1, I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+
+		// Set gyroscope range to lowest --> 250 degrees/s (highest sensitivity)
+		pWrite = 0;
+		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_GYRO_CONFIG, I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+
+		// Set accelerometer range to lowest --> -/+ 2g (highest sensitivity)
+		pWrite = 0;
+		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_ACCEL_CONFIG, I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+
+	}
+}
+
+void readMPU6050(MPU6050_Data *pData){
+	// 0x3B (H), 0x3C (L)
+	int8_t buffer[14];
+
+	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_DATA_ADDR, I2C_MEMADD_SIZE_8BIT, buffer, 14, 1000);
+
+	pData->acc_x = buffer[0] << 8 | buffer[1]; // 0x3B (H), 0x3C (L), bitwise-OR
+	pData->acc_y = buffer[3] << 8 | buffer[4];
+	pData->acc_z = buffer[5] << 8 | buffer[6];
+	pData->temp = buffer[7] << 8 | buffer[8];
+	pData->gyro_x = buffer[9] << 8 | buffer[10];
+	pData->gyro_y = buffer[11] << 8 | buffer[12];
+	pData->gyro_z = buffer[13] << 8 | buffer[14];
+}
+
+void printMPU6050(MPU6050_Data *pData){
+	char tx_buffer[128];
+
+	int len = sprintf(tx_buffer, "AX:%d, AY:%d, AZ:%d, T:%d, GX:%d, GY:%d, GZ:%d\r\n",
+			pData->acc_x, pData->acc_y, pData->acc_z,
+			pData->temp,
+			pData->gyro_x,  pData->gyro_y,  pData->gyro_z);
+
+	HAL_UART_Transmit(&huart2, (uint8_t*)tx_buffer, len, HAL_MAX_DELAY);
+}
+
 /* USER CODE END 0 */
 
 /**
@@ -202,6 +284,7 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   EnableMotorPWM();
+  EnableMPU6050();
 
   /* USER CODE END 2 */
 
@@ -213,9 +296,17 @@ int main(void)
 
   // We set a threshold so our motors don't spin forever if
   // some time elapsed since the last command
+
+  MPU6050_Data mpuData;
   uint32_t last_command_time = HAL_GetTick();
 
   while (1) {
+
+	// MPU
+	readMPU6050(&mpuData);
+	printMPU6050(&mpuData);
+	HAL_Delay(1000);
+
 	// Check the timeout (Watchdog)
 	if ((HAL_GetTick() - last_command_time) >= COMMAND_TIMEOUT_MS){
 		// If there was no command in a while (maybe the Rock died), stop the wheels.
