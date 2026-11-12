@@ -18,11 +18,10 @@
 /* USER CODE END Header */
 /* Includes ------------------------------------------------------------------*/
 #include "main.h"
-#include "stdio.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stdio.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -79,6 +78,10 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 uint8_t rx_command;
 const uint32_t COMMAND_TIMEOUT_MS = 500;
+
+volatile uint8_t i2c_busy = 0;
+volatile uint8_t mpu_data_ready = 0;
+volatile uint8_t i2c_error = 0;
 
 /* USER CODE END PV */
 
@@ -234,6 +237,42 @@ void readMPU6050(MPU6050_Data *pData){
 	pData->gyro_z = (uint16_t) (buffer[12] << 8 | buffer[13]);
 }
 
+uint8_t mpu_buffer[14];
+
+void MPU6050_Read_IT(void)
+{
+    if (i2c_busy == 0)
+    {
+        i2c_busy = 1;
+
+        HAL_StatusTypeDef status;
+
+        status = HAL_I2C_Mem_Read_IT(
+            &hi2c1,
+            MPU6050_ADDR,
+			MPU6050_DATA_ADDR,
+            I2C_MEMADD_SIZE_8BIT,
+            mpu_buffer,
+            14
+        );
+
+        if (status != HAL_OK)
+        {
+            i2c_busy = 0;
+            i2c_error = 1;
+        }
+    }
+}
+
+void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c)
+{
+    if (hi2c->Instance == I2C1)
+    {
+        i2c_busy = 0;
+        mpu_data_ready = 1;
+    }
+}
+
 void printMPU6050(MPU6050_Data *pData){
 	char tx_buffer[128];
 
@@ -308,14 +347,25 @@ int main(void)
   // some time elapsed since the last command
 
   MPU6050_Data mpuData;
-  uint32_t last_command_time = HAL_GetTick();
+  volatile uint32_t last_command_time = HAL_GetTick();
 
   while (1) {
+	  MPU6050_Read_IT();
+	 if(mpu_data_ready){
+		// MPU
+//		readMPU6050(&mpuData);
+//		printMPU6050(&mpuData);
+		 int16_t accel_x = (int16_t)((mpu_buffer[0] << 8) | mpu_buffer[1]);
+		 int16_t accel_y = (int16_t)((mpu_buffer[2] << 8) | mpu_buffer[3]);
+		 int16_t accel_z = (int16_t)((mpu_buffer[4] << 8) | mpu_buffer[5]);
 
-	// MPU
-	readMPU6050(&mpuData);
-	printMPU6050(&mpuData);
-	HAL_Delay(1000);
+		 int16_t temperature = (int16_t)((mpu_buffer[6] << 8) | mpu_buffer[7]);
+
+		 int16_t gyro_x = (int16_t)((mpu_buffer[8] << 8) | mpu_buffer[9]);
+		 int16_t gyro_y = (int16_t)((mpu_buffer[10] << 8) | mpu_buffer[11]);
+		 int16_t gyro_z = (int16_t)((mpu_buffer[12] << 8) | mpu_buffer[13]);
+		 mpu_data_ready = 0;
+	 }
 
 	// Check the timeout (Watchdog)
 	if ((HAL_GetTick() - last_command_time) >= COMMAND_TIMEOUT_MS){
@@ -331,34 +381,34 @@ int main(void)
     	switch (rx_command){
     	case 'w':
     		// Drive forward
-    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 800);
-    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 800);
-    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 800);
-    		Motor_SetSpeed(MOTOR_LEFT_BACK, 800);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 500);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 500);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 500);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, 500);
     		last_command_time = HAL_GetTick();
     		break;
     	case 's':
     		// Drive forward
-    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -800);
-    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -800);
-    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -800);
-    		Motor_SetSpeed(MOTOR_LEFT_BACK, -800);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -500);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -500);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -500);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, -500);
     		last_command_time = HAL_GetTick();
     		break;
     	case 'd':
     		// Turn Right
-    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -800);
-    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 800);
-    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -800);
-    		Motor_SetSpeed(MOTOR_LEFT_BACK, 800);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, -500);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, 500);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, -500);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, 500);
     		last_command_time = HAL_GetTick();
     		break;
     	case 'a':
     		// Turn Left
-    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 800);
-    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -800);
-    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 800);
-    		Motor_SetSpeed(MOTOR_LEFT_BACK, -800);
+    		Motor_SetSpeed(MOTOR_RIGHT_FRONT, 500);
+    		Motor_SetSpeed(MOTOR_LEFT_FRONT, -500);
+    		Motor_SetSpeed(MOTOR_RIGHT_BACK, 500);
+    		Motor_SetSpeed(MOTOR_LEFT_BACK, -500);
     		last_command_time = HAL_GetTick();
     		break;
 
