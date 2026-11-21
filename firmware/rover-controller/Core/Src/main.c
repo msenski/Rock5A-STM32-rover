@@ -79,6 +79,7 @@ const uint32_t COMMAND_TIMEOUT_MS = 500;
 volatile uint8_t i2c_busy = 0;
 volatile uint8_t mpu_data_ready = 0;
 volatile uint8_t i2c_error = 0;
+uint8_t mpu_buffer[14]; // for the IT to read values into
 
 /* USER CODE END PV */
 
@@ -116,12 +117,29 @@ void Motor_SetSpeed(Motor motor, int32_t speed);
 
 /**
  * @brief  Check connection and initialize the MPU6050 sensor.
- *
  */
 void EnableMPU6050(void);
 
-void readMPU6050(MPU6050_Data *pData);
+/**
+ * @brief  Triggers a non-blocking read via Interrupts from the MPU6050 sensor.
+ *
+ *  * @note   Signals the I2C bus is busy by setting i2c_busy to 1. In case of failure,
+ *  the bus is released by setting i2c_busy to 0.
+ */
+void MPU6050_Read_IT(void);
+/**
+ * @brief  Reads from the mpu_buffer into a well-formed data representation.
+ *
+ * @param pData Pointer to the data MPU6050_Data object to read into.
+ */
+void readMPU6050buffer(MPU6050_Data *pData);
 
+/**
+ * @brief  Prints the data from the given MPU6050_Data object in the form
+ * 			"AX:0, AY:0, AZ:0, T:0, GX:0, GY:0, GZ:0"
+ *
+ * @param pData Pointer to the data MPU6050_Data object to read into.
+ */
 void printMPU6050(MPU6050_Data *pData);
 /* USER CODE END PFP */
 
@@ -201,47 +219,29 @@ void EnableMPU6050(void) {
 	uint8_t pWrite;
 
 	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_WHO_AM_I_ADDR,
-			I2C_MEMADD_SIZE_8BIT, &pRead, 1, 1000);
+	I2C_MEMADD_SIZE_8BIT, &pRead, 1, 1000);
 	if (pRead == expected) {
 		// Connection established, we can proceed with initialization
 		// Wake up by setting all PWR_MGMT_1 bits to 0, including the SLEEP bit (6)
 		pWrite = 0;
 		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_PWR_MGMT_1,
-				I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+		I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
 
 		// Set gyroscope range to lowest --> 250 degrees/s (highest sensitivity)
 		pWrite = 0;
 		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_GYRO_CONFIG,
-				I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+		I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
 
 		// Set accelerometer range to lowest --> -/+ 2g (highest sensitivity)
 		pWrite = 0;
 		HAL_I2C_Mem_Write(&hi2c1, MPU6050_ADDR, MPU6050_ACCEL_CONFIG,
-				I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
+		I2C_MEMADD_SIZE_8BIT, &pWrite, 1, 1000);
 
 	}
 }
 
-void readMPU6050(MPU6050_Data *pData) {
-	// 0x3B (H), 0x3C (L)
-	uint8_t buffer[14];
-
-	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_DATA_ADDR,
-			I2C_MEMADD_SIZE_8BIT, (uint8_t*) buffer, 14, 1000);
-
-	pData->acc_x = (uint16_t) (buffer[0] << 8 | buffer[1]); // 0x3B (H), 0x3C (L), bitwise-OR
-	pData->acc_y = (uint16_t) (buffer[2] << 8 | buffer[3]);
-	pData->acc_z = (uint16_t) (buffer[4] << 8 | buffer[5]);
-	pData->temp = (uint16_t) (buffer[6] << 8 | buffer[7]);
-	pData->gyro_x = (uint16_t) (buffer[8] << 8 | buffer[9]);
-	pData->gyro_y = (uint16_t) (buffer[10] << 8 | buffer[11]);
-	pData->gyro_z = (uint16_t) (buffer[12] << 8 | buffer[13]);
-}
-
-uint8_t mpu_buffer[14];
-
-void MPU6050_Read_IT(void) {
-	if (i2c_busy == 0) {
+void MPU6050_Read_IT() {
+	if (i2c_busy == 0 && mpu_data_ready == 0) {
 		i2c_busy = 1;
 
 		HAL_StatusTypeDef status;
@@ -251,6 +251,7 @@ void MPU6050_Read_IT(void) {
 		MPU6050_DATA_ADDR,
 		I2C_MEMADD_SIZE_8BIT, mpu_buffer, 14);
 
+		// Make sure to free up the line if IT read not possible
 		if (status != HAL_OK) {
 			i2c_busy = 0;
 			i2c_error = 1;
@@ -263,6 +264,23 @@ void HAL_I2C_MemRxCpltCallback(I2C_HandleTypeDef *hi2c) {
 		i2c_busy = 0;
 		mpu_data_ready = 1;
 	}
+}
+
+void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
+	if (hi2c->Instance == I2C1) {
+		i2c_busy = 0;
+		mpu_data_ready = 0;
+	}
+}
+
+void readMPU6050buffer(MPU6050_Data *pData) {
+	pData->acc_x = (uint16_t) (mpu_buffer[0] << 8 | mpu_buffer[1]); // 0x3B (H), 0x3C (L), bitwise-OR
+	pData->acc_y = (uint16_t) (mpu_buffer[2] << 8 | mpu_buffer[3]);
+	pData->acc_z = (uint16_t) (mpu_buffer[4] << 8 | mpu_buffer[5]);
+	pData->temp = (uint16_t) (mpu_buffer[6] << 8 | mpu_buffer[7]);
+	pData->gyro_x = (uint16_t) (mpu_buffer[8] << 8 | mpu_buffer[9]);
+	pData->gyro_y = (uint16_t) (mpu_buffer[10] << 8 | mpu_buffer[11]);
+	pData->gyro_z = (uint16_t) (mpu_buffer[12] << 8 | mpu_buffer[13]);
 }
 
 void printMPU6050(MPU6050_Data *pData) {
@@ -340,22 +358,11 @@ int main(void) {
 
 	while (1) {
 
-//	  Motor_SetSpeed(MOTOR_LEFT_FRONT, 300);
+		// Read the MPU through an Interupt
 		MPU6050_Read_IT();
 		if (mpu_data_ready) {
-			// MPU
-//		readMPU6050(&mpuData);
-//		printMPU6050(&mpuData);
-			int16_t accel_x = (int16_t) ((mpu_buffer[0] << 8) | mpu_buffer[1]);
-			int16_t accel_y = (int16_t) ((mpu_buffer[2] << 8) | mpu_buffer[3]);
-			int16_t accel_z = (int16_t) ((mpu_buffer[4] << 8) | mpu_buffer[5]);
-
-			int16_t temperature = (int16_t) ((mpu_buffer[6] << 8)
-					| mpu_buffer[7]);
-
-			int16_t gyro_x = (int16_t) ((mpu_buffer[8] << 8) | mpu_buffer[9]);
-			int16_t gyro_y = (int16_t) ((mpu_buffer[10] << 8) | mpu_buffer[11]);
-			int16_t gyro_z = (int16_t) ((mpu_buffer[12] << 8) | mpu_buffer[13]);
+			readMPU6050buffer(&mpuData);
+			printMPU6050(&mpuData);
 			mpu_data_ready = 0;
 		}
 
