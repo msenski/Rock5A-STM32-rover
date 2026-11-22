@@ -2,10 +2,38 @@
 
 A small 4-wheel robotic rover steered by a STM32 MCU (Nucleo G431KB) and a Rock5A 8GB.
 
+![Demo animation](./assets/output_large.gif)
+
+### Front view
+
+![Rover](./assets/rover.jpeg)
+
+## Custom designed PCB
+
+I've designed a custom PCB for the Rover. You can see the KiCad project for it in my repo [here](https://github.com/msenski/KiCad_projects/tree/main/rock5a-stm32-rover).
+
+![Rover](./assets/pcb_empty.jpeg)
+
+![Rover](./assets/pcb_modules_attached.jpeg)
+
+
+## Implementation Steps
+
+- [x] Set up Rock 5A with Linux and remote development
+- [x] Set up STM32 firmware and UART communication
+- [x] Establish UART communication between Rock 5A and STM32
+- [x] Implement a C++ serial port abstraction on Rock 5A
+- [x] Generate PWM signals with STM32 timers
+- [x] Control all four wheels (forward, reverse, turning)
+- [x] Send motor commands from Rock 5A over UART
+- [ ] Add sensors and feedback (In progress, MPU6050 added)
+- [ ] Implement basic autonomous behavior
+
 ## Architecture
 
 The Rock 5A acts as the high-level computer, while the STM32 handles low-level hardware control.
 
+The following depicts the current state:
 
 ```mermaid
 flowchart LR
@@ -15,16 +43,12 @@ flowchart LR
 
     subgraph SENSORS["Sensors"]
         IMU["MPU6050 / GY-521<br/>Accel + Gyro"]
-        TOF["VL53L1X<br/>Distance Sensor"]
+        TOF["VL53L1X<br/>Distance Sensor (In Progress)"]
     end
 
     subgraph ACTUATION["Actuation"]
-        DRV["DRV8833"]
+        DRV["2x DRV8833"]
         MOTORS["4x DC Motors / Wheels"]
-    end
-
-    subgraph DEBUG["Debug / Bring-up"]
-        USBTTL["USB-to-TTL Converter"]
     end
 
     IMU <-->|I2C| STM
@@ -34,13 +58,10 @@ flowchart LR
     DRV --> MOTORS
 
     BAT["Battery Pack"] --> DRV
-
-    USBTTL <-.-> ROCK
-    USBTTL <-.-> STM
 ```
 
 
-The goal is to gradually extend the system with sensors, feedback, and eventually higher-level autonomous behavior.
+The goal is to gradually extend the system with sensors, feedback, and eventually higher-level autonomous behavior and wrap it with ROS2.
 
 ## Folder structure
 
@@ -72,15 +93,4 @@ The `firmware` project controls the rover hardware and is generated/configured w
 - **VL53L1X**:  laser distance sensor for obstacle detection [link](https://amzn.eu/d/02bBO0LR)
 - **USB to TTL Serial Module**:  UART to USB converter [link](https://amzn.eu/d/01C2FUlQ)
 
-## Milestones
 
-- [x] Set up Rock 5A with Linux and remote development
-- [x] Set up STM32 firmware and UART communication
-- [x] Establish UART communication between Rock 5A and STM32
-- [x] Implement a C++ serial port abstraction on Rock 5A
-- [ ] Generate PWM signals with STM32 timers
-- [ ] Control one DC motor through DRV8833
-- [ ] Control all four wheels (forward, reverse, turning)
-- [ ] Send motor commands from Rock 5A over UART
-- [ ] Add sensors and feedback
-- [ ] Implement basic autonomous behavior
