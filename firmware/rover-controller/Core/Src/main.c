@@ -79,7 +79,8 @@ const uint32_t COMMAND_TIMEOUT_MS = 500;
 volatile uint8_t i2c_busy = 0;
 volatile uint8_t mpu_data_ready = 0;
 volatile uint8_t i2c_error = 0;
-uint8_t mpu_buffer[14]; // for the IT to read values into
+// The HAL keeps this address after the start function returns.
+static uint8_t mpu_buffer[14];
 
 /* USER CODE END PV */
 
@@ -116,31 +117,31 @@ void EnableMotorPWM(void);
 void Motor_SetSpeed(Motor motor, int32_t speed);
 
 /**
- * @brief  Check connection and initialize the MPU6050 sensor.
+ * @brief  Check the connection and configure the MPU6050.
  */
 void EnableMPU6050(void);
 
 /**
- * @brief  Triggers a non-blocking read via Interrupts from the MPU6050 sensor.
- *
- *  * @note   Signals the I2C bus is busy by setting i2c_busy to 1. In case of failure,
- *  the bus is released by setting i2c_busy to 0.
+ * @brief Start a non-blocking, interrupt-driven MPU6050 read if the buffer is available.
+ * @note The completion callback sets mpu_data_ready when the data arrives.
  */
 void MPU6050_Read_IT(void);
+
 /**
- * @brief  Reads from the mpu_buffer into a well-formed data representation.
- *
- * @param pData Pointer to the data MPU6050_Data object to read into.
+ * @brief Decode a completed MPU6050 transfer into an MPU6050_Data object
+ *        holding the signed values for XYZ acceleration, temperature, and
+ *        XYZ angular velocity.
+ * @param[out] pData Destination for the decoded readings of type MPU6050_Data.
+ * @pre mpu_data_ready is set.
  */
 void readMPU6050buffer(MPU6050_Data *pData);
 
 /**
- * @brief  Prints the data from the given MPU6050_Data object in the form
- * 			"AX:0, AY:0, AZ:0, T:0, GX:0, GY:0, GZ:0"
- *
- * @param pData Pointer to the data MPU6050_Data object to read into.
+ * @brief Convert raw readings to g, degrees Celsius, and degrees per second
+ *        and transmit them over UART.
+ * @param[in] pData Sample to print.
  */
-void printMPU6050(MPU6050_Data *pData);
+void printMPU6050(const MPU6050_Data *pData);
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -218,9 +219,9 @@ void EnableMPU6050(void) {
 	uint8_t pRead;
 	uint8_t pWrite;
 
-	HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR, MPU6050_WHO_AM_I_ADDR,
-	I2C_MEMADD_SIZE_8BIT, &pRead, 1, 1000);
-	if (pRead == expected) {
+	HAL_StatusTypeDef status = HAL_I2C_Mem_Read(&hi2c1, MPU6050_ADDR,
+			MPU6050_WHO_AM_I_ADDR, I2C_MEMADD_SIZE_8BIT, &pRead, 1, 1000);
+	if (status == HAL_OK && pRead == expected) {
 		// Connection established, we can proceed with initialization
 		// Wake up by setting all PWR_MGMT_1 bits to 0, including the SLEEP bit (6)
 		pWrite = 0;
@@ -240,7 +241,8 @@ void EnableMPU6050(void) {
 	}
 }
 
-void MPU6050_Read_IT() {
+void MPU6050_Read_IT(void) {
+	// An active transfer or an unread sample still owns the buffer.
 	if (i2c_busy == 0 && mpu_data_ready == 0) {
 		i2c_busy = 1;
 
@@ -249,9 +251,9 @@ void MPU6050_Read_IT() {
 		status = HAL_I2C_Mem_Read_IT(&hi2c1,
 		MPU6050_ADDR,
 		MPU6050_DATA_ADDR,
-		I2C_MEMADD_SIZE_8BIT, mpu_buffer, 14);
+		I2C_MEMADD_SIZE_8BIT, mpu_buffer, sizeof mpu_buffer);
 
-		// Make sure to free up the line if IT read not possible
+		// A failed start needs us to clear the software busy flag.
 		if (status != HAL_OK) {
 			i2c_busy = 0;
 			i2c_error = 1;
@@ -270,20 +272,21 @@ void HAL_I2C_ErrorCallback(I2C_HandleTypeDef *hi2c) {
 	if (hi2c->Instance == I2C1) {
 		i2c_busy = 0;
 		mpu_data_ready = 0;
+		i2c_error = 1;
 	}
 }
 
 void readMPU6050buffer(MPU6050_Data *pData) {
-	pData->acc_x = (uint16_t) (mpu_buffer[0] << 8 | mpu_buffer[1]); // 0x3B (H), 0x3C (L), bitwise-OR
-	pData->acc_y = (uint16_t) (mpu_buffer[2] << 8 | mpu_buffer[3]);
-	pData->acc_z = (uint16_t) (mpu_buffer[4] << 8 | mpu_buffer[5]);
-	pData->temp = (uint16_t) (mpu_buffer[6] << 8 | mpu_buffer[7]);
-	pData->gyro_x = (uint16_t) (mpu_buffer[8] << 8 | mpu_buffer[9]);
-	pData->gyro_y = (uint16_t) (mpu_buffer[10] << 8 | mpu_buffer[11]);
-	pData->gyro_z = (uint16_t) (mpu_buffer[12] << 8 | mpu_buffer[13]);
+	pData->acc_x = (int16_t) (mpu_buffer[0] << 8 | mpu_buffer[1]); // 0x3B (H), 0x3C (L), bitwise-OR
+	pData->acc_y = (int16_t) (mpu_buffer[2] << 8 | mpu_buffer[3]);
+	pData->acc_z = (int16_t) (mpu_buffer[4] << 8 | mpu_buffer[5]);
+	pData->temp = (int16_t) (mpu_buffer[6] << 8 | mpu_buffer[7]);
+	pData->gyro_x = (int16_t) (mpu_buffer[8] << 8 | mpu_buffer[9]);
+	pData->gyro_y = (int16_t) (mpu_buffer[10] << 8 | mpu_buffer[11]);
+	pData->gyro_z = (int16_t) (mpu_buffer[12] << 8 | mpu_buffer[13]);
 }
 
-void printMPU6050(MPU6050_Data *pData) {
+void printMPU6050(const MPU6050_Data *pData) {
 	char tx_buffer[128];
 
 	float acc_x_f = pData->acc_x / 16384.0f;
@@ -351,20 +354,19 @@ int main(void) {
 	/* Infinite loop */
 	/* USER CODE BEGIN WHILE */
 
-	// We set a threshold so our motors don't spin forever if
-	// some time elapsed since the last command
 	MPU6050_Data mpuData;
-	volatile uint32_t last_command_time = HAL_GetTick();
+	// Track when the last motor command arrived for the watchdog.
+	uint32_t last_command_time = HAL_GetTick();
 
 	while (1) {
 
-		// Read the MPU through an Interupt
-		MPU6050_Read_IT();
 		if (mpu_data_ready) {
 			readMPU6050buffer(&mpuData);
-			printMPU6050(&mpuData);
+			// The sample is now in mpuData, so the receive buffer can be reused.
 			mpu_data_ready = 0;
+			printMPU6050(&mpuData);
 		}
+		MPU6050_Read_IT();
 
 		// Check the timeout (Watchdog)
 		if ((HAL_GetTick() - last_command_time) >= COMMAND_TIMEOUT_MS) {
